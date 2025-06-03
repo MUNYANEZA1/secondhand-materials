@@ -1,20 +1,54 @@
-import axios from 'axios';
+import axios from "axios";
 
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: '/api'
+  baseURL: "/api",
 });
 
 // Add token to requests if available
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // Fixed: Use the correct token key that matches AuthContext
+    const token =
+      localStorage.getItem("auth-token") || localStorage.getItem("token");
+    console.log("Token from localStorage:", token ? "Found" : "Missing");
+    console.log(
+      "Token value:",
+      token ? `${token.substring(0, 20)}...` : "undefined"
+    );
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for better error handling
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    console.log("API Error:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      method: error.config?.method,
+      headers: error.config?.headers,
+    });
+
+    // Handle 401 errors (unauthorized)
+    if (error.response?.status === 401) {
+      console.log("Authentication failed - token might be expired or invalid");
+      // Optionally redirect to login or clear invalid token
+      // localStorage.removeItem('auth-token');
+      // window.location.href = '/login';
+    }
+
     return Promise.reject(error);
   }
 );
@@ -48,6 +82,11 @@ const itemService = {
 
   // Update item status
   updateItemStatus: (id, status) => {
+    console.log("Updating item status:", { id, status });
+    console.log(
+      "Current token:",
+      localStorage.getItem("auth-token") ? "Found" : "Missing"
+    );
     return api.put(`/items/${id}/status`, { status });
   },
 

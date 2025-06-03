@@ -73,7 +73,7 @@ const ConversationList = ({ onSelectConversation, selectedId }) => {
             <div className="flex items-center space-x-3">
               <div className="relative">
                 <img
-                  src={otherParticipant?.profilePhoto ? `/uploads/profiles/${otherParticipant.profilePhoto}` : '/assets/default-profile.jpg'}
+                  src={otherParticipant?.profilePhoto ? `/uploads/profiles/${otherParticipant.profilePhoto}` : '/assets/default-profile.png'}
                   alt={`${otherParticipant?.firstName} ${otherParticipant?.lastName}`}
                   className="w-10 h-10 rounded-full object-cover"
                 />
@@ -104,7 +104,7 @@ const ConversationList = ({ onSelectConversation, selectedId }) => {
                   <img
                     src={conversation.itemId.photos && conversation.itemId.photos.length > 0 
                       ? `/uploads/items/${conversation.itemId.photos[0]}` 
-                      : '/assets/default-item.jpg'}
+                      : '/assets/default-item.png'}
                     alt={conversation.itemId.title}
                     className="w-full h-full object-cover"
                   />

@@ -103,7 +103,7 @@ const Conversation = ({ conversationId }) => {
       {/* Conversation Header */}
       <div className="bg-white p-4 border-b flex items-center space-x-3">
         <img
-          src={otherParticipant?.profilePhoto ? `/uploads/profiles/${otherParticipant.profilePhoto}` : '/assets/default-profile.jpg'}
+          src={otherParticipant?.profilePhoto ? `/uploads/profiles/${otherParticipant.profilePhoto}` : '/assets/default-profile.png'}
           alt={`${otherParticipant?.firstName} ${otherParticipant?.lastName}`}
           className="w-10 h-10 rounded-full object-cover"
         />

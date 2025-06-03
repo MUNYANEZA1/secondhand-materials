@@ -123,7 +123,7 @@ const PendingItems = () => {
                     <div className="flex items-center">
                       <div className="h-10 w-10 flex-shrink-0 mr-3">
                         <img 
-                          src={item.photos && item.photos.length > 0 ? `/uploads/items/${item.photos[0]}` : '/assets/default-item.jpg'} 
+                          src={item.photos && item.photos.length > 0 ? `/uploads/items/${item.photos[0]}` : '/assets/default-item.png'} 
                           alt={item.title}
                           className="h-10 w-10 rounded object-cover"
                         />

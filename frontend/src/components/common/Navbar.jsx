@@ -3,10 +3,29 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useNotification } from "../../hooks/useNotification";
 import { DEFAULT_PROFILE_IMAGE } from "../../utils/constants";
+import { useState, useRef, useEffect } from "react";
 
 const Navbar = () => {
   const { currentUser, isAuthenticated, isAdmin, logout } = useAuth();
   const { addNotification } = useNotification();
+
+  // Add this state and logic to your component
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -56,8 +75,18 @@ const Navbar = () => {
           {/* User Menu */}
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
-              <div className="relative group">
-                <button className="flex items-center space-x-2 focus:outline-none">
+              <div
+                className="relative"
+                ref={dropdownRef}
+                onMouseEnter={() => setIsDropdownOpen(true)}
+                onMouseLeave={() => setIsDropdownOpen(false)}
+              >
+                <button
+                  className="flex items-center space-x-2 focus:outline-none"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  aria-expanded={isDropdownOpen}
+                  aria-haspopup="true"
+                >
                   <img
                     src={
                       currentUser?.profilePhoto
@@ -72,7 +101,9 @@ const Navbar = () => {
                   </span>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
+                    className={`h-5 w-5 transition-transform duration-200 ${
+                      isDropdownOpen ? "rotate-180" : ""
+                    }`}
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
@@ -83,36 +114,50 @@ const Navbar = () => {
                     />
                   </svg>
                 </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
+
+                <div
+                  className={`absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 transition-all duration-200 transform ${
+                    isDropdownOpen
+                      ? "opacity-100 translate-y-0 visible"
+                      : "opacity-0 -translate-y-2 invisible"
+                  }`}
+                >
                   <Link
                     to="/profile"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+                    onClick={() => setIsDropdownOpen(false)}
                   >
                     My Profile
                   </Link>
                   <Link
                     to="/items/create"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+                    onClick={() => setIsDropdownOpen(false)}
                   >
                     Sell an Item
                   </Link>
                   <Link
                     to="/messages"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+                    onClick={() => setIsDropdownOpen(false)}
                   >
                     Messages
                   </Link>
                   {isAdmin && (
                     <Link
                       to="/admin"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+                      onClick={() => setIsDropdownOpen(false)}
                     >
                       Admin Dashboard
                     </Link>
                   )}
                   <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => {
+                      handleLogout();
+                      setIsDropdownOpen(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
                   >
                     Logout
                   </button>

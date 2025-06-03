@@ -19,6 +19,8 @@ import ProfileEditPage from "./pages/ProfileEditPage";
 import MessagesPage from "./pages/MessagesPage";
 import AdminPage from "./pages/AdminPage";
 
+import SearchResultsPage from "./pages/SearchResultsPage"; 
+
 function App() {
   const { loading } = useAuth();
 
@@ -38,6 +40,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/items/search" element={<SearchResultsPage />} />
           <Route path="/items/:id" element={<ItemDetailPage />} />
 
           <Route

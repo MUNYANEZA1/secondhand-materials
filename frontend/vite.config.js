@@ -16,6 +16,8 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    // Add or update the allowedHosts option here
+    allowedHosts: ["blue-otters-hope.loca.lt"],
   },
   publicDir: "public",
 });

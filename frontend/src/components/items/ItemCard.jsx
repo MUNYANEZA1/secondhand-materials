@@ -20,7 +20,7 @@ const ItemCard = ({ item }) => {
           src={
             photos && photos.length > 0
               ? `/uploads/items/${photos[0]}`
-              : "/assets/default-item.jpg"
+              : "/assets/default-item.png"
           }
           alt={title}
           className="w-full h-full object-cover"
