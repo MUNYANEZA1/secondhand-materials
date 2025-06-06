@@ -1,3 +1,4 @@
+import asyncHandler from '../middleware/asyncHandler';
 import { Request, Response } from 'express';
 import Product, { IProduct } from '../models/ProductModel';
 import User from '../models/UserModel'; // To populate seller info
@@ -7,7 +8,7 @@ import fs from 'fs'; // For temporary file handling if using disk storage with m
 // @desc    Fetch all products with filtering, pagination, search
 // @route   GET /api/products
 // @access  Public
-export const getProducts = async (req: Request, res: Response) => {
+export const getProducts = asyncHandler(async (req: Request, res: Response) => {
   const pageSize = parseInt(req.query.limit as string) || 12;
   const page = parseInt(req.query.page as string) || 1;
   const searchTerm = req.query.search ? {
@@ -68,12 +69,12 @@ export const getProducts = async (req: Request, res: Response) => {
     console.error('Error fetching products:', error);
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
-};
+});
 
 // @desc    Fetch a single product by ID
 // @route   GET /api/products/:id
 // @access  Public
-export const getProductById = async (req: Request, res: Response) => {
+export const getProductById = asyncHandler(async (req: Request, res: Response) => {
   try {
     const product = await Product.findById(req.params.id).populate('seller', 'name email avatar reputation verified');
     if (product) {
@@ -90,12 +91,12 @@ export const getProductById = async (req: Request, res: Response) => {
     }
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
-};
+});
 
 // @desc    Create a new product
 // @route   POST /api/products
 // @access  Private (requires auth)
-export const createProduct = async (req: Request, res: Response) => {
+export const createProduct = asyncHandler(async (req: Request, res: Response) => {
   const { title, description, price, condition, category, subcategory, location, tags, isFree, ownerType, staffOnly } = req.body;
 
   if (!req.user) {
@@ -146,14 +147,17 @@ export const createProduct = async (req: Request, res: Response) => {
     console.error('Error creating product:', error);
     res.status(500).json({ message: 'Server Error creating product', error: error.message });
   }
-};
+});
 
 // @desc    Update an existing product
 // @route   PUT /api/products/:id
 // @access  Private (requires auth, and user must be seller or admin)
-export const updateProduct = async (req: Request, res: Response) => {
+export const updateProduct = async (req: Request, res: Response, next: NextFunction) => { // Added next
   const { title, description, price, condition, category, subcategory, location, tags, isFree, isActive, ownerType, staffOnly, imagesToDelete, existingImages } = req.body;
 
+  // Note: Original was wrapped in asyncHandler, so try-catch would normally be handled by it.
+  // For this temporary test, we are removing asyncHandler, so errors will go to global error handler via 'next(error)' if not caught.
+  // However, the existing catch block will still function.
   if (!req.user) {
     return res.status(401).json({ message: 'Not authorized' });
   }
@@ -221,12 +225,13 @@ export const updateProduct = async (req: Request, res: Response) => {
     }
     res.status(500).json({ message: 'Server Error updating product', error: error.message });
   }
-};
+}; // Temporarily unwrapped
 
 // @desc    Delete a product
 // @route   DELETE /api/products/:id
 // @access  Private (requires auth, and user must be seller or admin)
-export const deleteProduct = async (req: Request, res: Response) => {
+export const deleteProduct = async (req: Request, res: Response, next: NextFunction) => { // Added next
+  // Note: Original was wrapped in asyncHandler. Explicit error handling or passing to next() would be needed if this were permanent.
   if (!req.user) {
     return res.status(401).json({ message: 'Not authorized' });
   }
@@ -263,4 +268,4 @@ export const deleteProduct = async (req: Request, res: Response) => {
     }
     res.status(500).json({ message: 'Server Error deleting product', error: error.message });
   }
-};
+}; // Temporarily unwrapped
