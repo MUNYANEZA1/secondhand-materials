@@ -1,3 +1,4 @@
+import asyncHandler from '../middleware/asyncHandler';
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/UserModel';
 import generateToken from '../utils/generateToken';
@@ -5,7 +6,7 @@ import generateToken from '../utils/generateToken';
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
-export const registerUser = async (req: Request, res: Response) => {
+export const registerUser = asyncHandler(async (req: Request, res: Response) => {
   const { name, email, password, avatar, role } = req.body;
 
   try {
@@ -40,12 +41,12 @@ export const registerUser = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({ message: 'Server error during registration', error: error.message });
   }
-};
+});
 
 // @desc    Authenticate user & get token (Login)
 // @route   POST /api/auth/login
 // @access  Public
-export const loginUser = async (req: Request, res: Response) => {
+export const loginUser = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {
@@ -68,7 +69,7 @@ export const loginUser = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({ message: 'Server error during login', error: error.message });
   }
-};
+});
 
 // @desc    Get user profile
 // @route   GET /api/auth/profile
