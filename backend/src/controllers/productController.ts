@@ -1,5 +1,5 @@
 import asyncHandler from '../middleware/asyncHandler';
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express'; // Added NextFunction
 import Product, { IProduct } from '../models/ProductModel';
 import User from '../models/UserModel'; // To populate seller info
 import { uploadToCloudinary, deleteFromCloudinary } from '../config/cloudinary'; // Assuming this is correctly set up
@@ -36,10 +36,20 @@ export const getProducts = asyncHandler(async (req: Request, res: Response) => {
       filters.price = { $gte: min, $lte: max };
     }
   }
-   if (req.query.location) {
+  if (req.query.location) {
+    // Use regex for case-insensitive partial matching for location
     filters.location = { $regex: req.query.location as string, $options: 'i' };
   }
-  // Add more filters as needed from frontend: isFree, ownerType, staffOnly
+  if (req.query.ownerType) {
+    filters.ownerType = req.query.ownerType as string;
+  }
+  if (req.query.staffOnly !== undefined) {
+    filters.staffOnly = req.query.staffOnly === 'true';
+  }
+  if (req.query.isFree !== undefined) {
+    filters.isFree = req.query.isFree === 'true';
+  }
+  // Potentially more filters like sellerId, tags etc.
 
   const sortOptions: any = {};
   const sortBy = req.query.sortBy as string;
@@ -47,7 +57,8 @@ export const getProducts = asyncHandler(async (req: Request, res: Response) => {
   else if (sortBy === 'oldest') sortOptions.createdAt = 1;
   else if (sortBy === 'price-low') sortOptions.price = 1;
   else if (sortBy === 'price-high') sortOptions.price = -1;
-  // else if (sortBy === 'popular') sortOptions.likes = -1; // or views
+  else if (sortBy === 'popular') sortOptions.likes = -1; // Sort by likes for "popular"
+  else if (sortBy === 'views') sortOptions.views = -1; // Optional: sort by views
   else sortOptions.createdAt = -1; // Default sort
 
   try {
@@ -103,6 +114,21 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
     return res.status(401).json({ message: 'Not authorized, no user found in request' });
   }
 
+  // Simplified category validation
+  const allowedCategories = ['Electronics', 'Furniture', 'Clothing', 'Books', 'Stationery', 'Services', 'Other'];
+  let validatedCategory = category;
+  if (category && !allowedCategories.includes(category)) {
+    // Option 1: Return error
+    // return res.status(400).json({ message: `Invalid category. Allowed categories are: ${allowedCategories.join(', ')}` });
+    // Option 2: Assign a default category (e.g., 'Other') or handle as per preference
+    console.warn(`Invalid category "${category}" provided. Defaulting to "Other".`);
+    validatedCategory = 'Other';
+  }
+  if (!category) { // If category is not provided, default to 'Other'
+    validatedCategory = 'Other';
+  }
+
+
   const files = req.files as Express.Multer.File[];
   if (!files || files.length === 0) {
     return res.status(400).json({ message: 'At least one image is required' });
@@ -115,30 +141,34 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
 
     const imageUrls: string[] = [];
     for (const file of files) {
-      // If using diskStorage, file.path would be used. For memoryStorage, we need to handle the buffer.
-      // For memoryStorage, we need a way to pass the buffer to uploadToCloudinary.
-      // A common pattern for memoryStorage is to convert buffer to Data URI.
       const b64 = Buffer.from(file.buffer).toString('base64');
       let dataURI = 'data:' + file.mimetype + ';base64,' + b64;
       const imageUrl = await uploadToCloudinary(dataURI, 'products');
       imageUrls.push(imageUrl);
     }
 
+    const parsedPrice = parseFloat(price);
+    if (isNaN(parsedPrice)) {
+        return res.status(400).json({ message: 'Invalid price format.' });
+    }
+
+    const parsedIsFree = typeof isFree === 'string' ? isFree.toLowerCase() === 'true' : Boolean(isFree);
+
     const product = new Product({
       title,
       description,
-      price: Number(price),
+      price: parsedPrice,
       condition,
-      category,
+      category: validatedCategory,
       subcategory,
       images: imageUrls,
       seller: (req.user as any)._id, // From auth middleware
       location,
       tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map((tag: string) => tag.trim()) : []),
-      isFree: Boolean(isFree),
+      isFree: parsedIsFree,
       isActive: true, // Default
       ownerType,
-      staffOnly: Boolean(staffOnly)
+      staffOnly: typeof staffOnly === 'string' ? staffOnly.toLowerCase() === 'true' : Boolean(staffOnly)
     });
 
     const createdProduct = await product.save();
@@ -152,12 +182,9 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
 // @desc    Update an existing product
 // @route   PUT /api/products/:id
 // @access  Private (requires auth, and user must be seller or admin)
-export const updateProduct = async (req: Request, res: Response, next: NextFunction) => { // Added next
+export const updateProduct = async (req: Request, res: Response, next: NextFunction) => {
   const { title, description, price, condition, category, subcategory, location, tags, isFree, isActive, ownerType, staffOnly, imagesToDelete, existingImages } = req.body;
 
-  // Note: Original was wrapped in asyncHandler, so try-catch would normally be handled by it.
-  // For this temporary test, we are removing asyncHandler, so errors will go to global error handler via 'next(error)' if not caught.
-  // However, the existing catch block will still function.
   if (!req.user) {
     return res.status(401).json({ message: 'Not authorized' });
   }
@@ -169,14 +196,12 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    // Check if the logged-in user is the seller or an admin
     if (product.seller.toString() !== (req.user as any)._id.toString() && (req.user as any).role !== 'admin') {
       return res.status(403).json({ message: 'User not authorized to update this product' });
     }
 
     let updatedImageUrls: string[] = existingImages ? (Array.isArray(existingImages) ? existingImages : [existingImages]) : product.images;
 
-    // Delete images marked for deletion from Cloudinary
     if (imagesToDelete && process.env.CLOUDINARY_URL) {
       const imagesToDeleteArray = Array.isArray(imagesToDelete) ? imagesToDelete : [imagesToDelete];
       for (const imageUrl of imagesToDeleteArray) {
@@ -185,12 +210,10 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
           updatedImageUrls = updatedImageUrls.filter(img => img !== imageUrl);
         } catch (delError) {
           console.error(`Failed to delete image ${imageUrl} from Cloudinary:`, delError);
-          // Optionally, decide if this should halt the update or just log
         }
       }
     }
 
-    // Upload new images if any
     const files = req.files as Express.Multer.File[];
     if (files && files.length > 0 && process.env.CLOUDINARY_URL) {
       for (const file of files) {
@@ -203,18 +226,48 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
 
     product.title = title || product.title;
     product.description = description || product.description;
-    product.price = price !== undefined ? Number(price) : product.price;
+
+    if (price !== undefined) {
+      const parsedPrice = parseFloat(price);
+      if (isNaN(parsedPrice)) {
+        return res.status(400).json({ message: 'Invalid price format.' });
+      }
+      product.price = parsedPrice;
+    }
+
     product.condition = condition || product.condition;
-    product.category = category || product.category;
+
+    if (category) {
+      const allowedCategories = ['Electronics', 'Furniture', 'Clothing', 'Books', 'Stationery', 'Services', 'Other'];
+      if (!allowedCategories.includes(category)) {
+        console.warn(`Invalid category "${category}" provided during update. Defaulting to "Other".`);
+        product.category = 'Other';
+      } else {
+        product.category = category;
+      }
+    }
+
     product.subcategory = subcategory || product.subcategory;
     product.location = location || product.location;
-    product.tags = tags ? (Array.isArray(tags) ? tags : tags.split(',').map((tag: string) => tag.trim())) : product.tags;
-    product.isFree = isFree !== undefined ? Boolean(isFree) : product.isFree;
-    product.isActive = isActive !== undefined ? Boolean(isActive) : product.isActive;
-    product.ownerType = ownerType || product.ownerType;
-    product.staffOnly = staffOnly !== undefined ? Boolean(staffOnly) : product.staffOnly;
+
+    if (tags) {
+        product.tags = Array.isArray(tags) ? tags : tags.split(',').map((tag: string) => tag.trim());
+    }
+
+    if (isFree !== undefined) {
+        product.isFree = typeof isFree === 'string' ? isFree.toLowerCase() === 'true' : Boolean(isFree);
+    }
+    if (isActive !== undefined) {
+        product.isActive = typeof isActive === 'string' ? isActive.toLowerCase() === 'true' : Boolean(isActive);
+    }
+    if (ownerType) {
+        product.ownerType = ownerType;
+    }
+    if (staffOnly !== undefined) {
+        product.staffOnly = typeof staffOnly === 'string' ? staffOnly.toLowerCase() === 'true' : Boolean(staffOnly);
+    }
+
     product.images = updatedImageUrls;
-    product.updatedAt = new Date();
 
     const updatedProduct = await product.save();
     res.json(updatedProduct);
@@ -225,13 +278,12 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
     }
     res.status(500).json({ message: 'Server Error updating product', error: error.message });
   }
-}; // Temporarily unwrapped
+};
 
 // @desc    Delete a product
 // @route   DELETE /api/products/:id
 // @access  Private (requires auth, and user must be seller or admin)
-export const deleteProduct = async (req: Request, res: Response, next: NextFunction) => { // Added next
-  // Note: Original was wrapped in asyncHandler. Explicit error handling or passing to next() would be needed if this were permanent.
+export const deleteProduct = async (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Not authorized' });
   }
@@ -246,20 +298,17 @@ export const deleteProduct = async (req: Request, res: Response, next: NextFunct
       return res.status(403).json({ message: 'User not authorized to delete this product' });
     }
 
-    // Delete images from Cloudinary
     if (product.images && product.images.length > 0 && process.env.CLOUDINARY_URL) {
       for (const imageUrl of product.images) {
         try {
           await deleteFromCloudinary(imageUrl);
         } catch (delError) {
           console.error(`Failed to delete image ${imageUrl} from Cloudinary during product deletion:`, delError);
-          // Optionally, log this and continue with DB deletion
         }
       }
     }
 
-    await product.deleteOne(); // Mongoose v6+
-    // For older Mongoose: await Product.findByIdAndRemove(req.params.id);
+    await product.deleteOne();
     res.json({ message: 'Product removed' });
   } catch (error: any) {
     console.error('Error deleting product:', error);
@@ -268,4 +317,45 @@ export const deleteProduct = async (req: Request, res: Response, next: NextFunct
     }
     res.status(500).json({ message: 'Server Error deleting product', error: error.message });
   }
-}; // Temporarily unwrapped
+};
+
+// @desc    Like a product
+// @route   POST /api/products/:id/like
+// @access  Private (requires auth)
+export const likeProduct = asyncHandler(async (req: Request, res: Response) => {
+  const product = await Product.findById(req.params.id);
+
+  if (!product) {
+    return res.status(404).json({ message: 'Product not found' });
+  }
+
+  // For now, simple increment. A more robust solution would track user likes.
+  product.likes = (product.likes || 0) + 1;
+  await product.save();
+
+  res.json({
+    message: 'Product liked successfully',
+    likes: product.likes,
+    productId: product._id,
+  });
+});
+
+// @desc    Unlike a product (Optional)
+// @route   DELETE /api/products/:id/like
+// @access  Private (requires auth)
+// export const unlikeProduct = asyncHandler(async (req: Request, res: Response) => {
+//   const product = await Product.findById(req.params.id);
+
+//   if (!product) {
+//     return res.status(404).json({ message: 'Product not found' });
+//   }
+
+//   product.likes = Math.max(0, (product.likes || 0) - 1); // Ensure likes don't go below 0
+//   await product.save();
+
+//   res.json({
+//     message: 'Product unliked successfully',
+//     likes: product.likes,
+//     productId: product._id,
+//   });
+// });

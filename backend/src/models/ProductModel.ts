@@ -57,6 +57,8 @@ const productSchema = new Schema<IProduct>(
 
 // Index for searching and filtering
 productSchema.index({ title: 'text', description: 'text', category: 1, location: 1, price: 1 });
+productSchema.index({ likes: -1 });
+productSchema.index({ views: -1 });
 
 const Product = mongoose.model<IProduct>('Product', productSchema);
 

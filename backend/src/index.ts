@@ -45,6 +45,17 @@ app.use('/api/resources', resourceRoutes);
 import chatRoutes from './routes/chatRoutes';
 app.use('/api/chat', chatRoutes);
 
+// Cart and Order Routes
+import cartRoutes from './routes/cartRoutes';
+app.use('/api/cart', cartRoutes);
+
+import orderRoutes from './routes/orderRoutes';
+app.use('/api/orders', orderRoutes);
+
+// User specific routes (e.g., wishlist, maybe profile in future)
+import userRoutes from './routes/userRoutes';
+app.use('/api/users', userRoutes);
+
 // Basic Route (Keep this before notFound middleware)
 app.get('/api', (req: Request, res: Response) => {
   res.json({ message: 'Welcome to the INES Platform API!' });
