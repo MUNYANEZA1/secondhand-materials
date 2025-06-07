@@ -6,9 +6,29 @@ export interface IUser extends Document {
   email: string;
   password?: string; // Optional because it will be removed in toJSON
   avatar?: string;
-  role: 'user' | 'moderator' | 'admin';
-  reputation: number;
-  verified: boolean;
+  role: 'student' | 'vendor' | 'admin' | 'university_staff';
+  studentId?: string;
+  university?: string;
+  major?: string;
+  graduationYear?: number;
+  businessName?: string;
+  businessType?: 'individual' | 'company' | 'university_department';
+  businessLicense?: string;
+  location?: string;
+  contactNumber?: string;
+  bio?: string;
+  socialMedia?: {
+    instagram?: string;
+    twitter?: string;
+    linkedin?: string;
+  };
+  totalSales: number;
+  totalPurchases: number;
+  lastActive?: Date;
+  verificationLevel: 'none' | 'email' | 'student_id' | 'full';
+  trustScore: number;
+  badges: string[];
+  wishlist: mongoose.Types.ObjectId[]; // Array of Product ObjectIds
   createdAt: Date;
   updatedAt: Date;
   matchPassword(enteredPassword: string): Promise<boolean>;
@@ -37,17 +57,43 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['user', 'moderator', 'admin'],
-      default: 'user',
+      enum: ['student', 'vendor', 'admin', 'university_staff'],
+      default: 'student',
     },
-    reputation: {
-      type: Number,
-      default: 0,
+    studentId: { type: String, optional: true },
+    university: { type: String, optional: true },
+    major: { type: String, optional: true },
+    graduationYear: { type: Number, optional: true },
+    businessName: { type: String, optional: true },
+    businessType: {
+      type: String,
+      enum: ['individual', 'company', 'university_department'],
+      optional: true,
     },
-    verified: {
-      type: Boolean,
-      default: false,
+    businessLicense: { type: String, optional: true },
+    location: { type: String, optional: true },
+    contactNumber: { type: String, optional: true },
+    bio: { type: String, optional: true },
+    socialMedia: {
+      instagram: { type: String, optional: true },
+      twitter: { type: String, optional: true },
+      linkedin: { type: String, optional: true },
     },
+    totalSales: { type: Number, default: 0 },
+    totalPurchases: { type: Number, default: 0 },
+    lastActive: { type: Date, optional: true },
+    verificationLevel: {
+      type: String,
+      enum: ['none', 'email', 'student_id', 'full'],
+      default: 'none',
+    },
+    trustScore: { type: Number, default: 0 },
+    badges: { type: [String], default: [] },
+    wishlist: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product',
+      default: [],
+    }],
   },
   {
     timestamps: true,

@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 import { Link } from 'react-router-dom';
-import AuthModal from '../modals/AuthModal';
+import EnhancedAuthModal from '../modals/EnhancedAuthModal';
 
 const UserActions = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -24,6 +24,20 @@ const UserActions = () => {
 
   const handleLogout = () => {
     dispatch(logout());
+  };
+
+  const getRoleColor = (role: string) => {
+    const colors = {
+      student: 'from-blue-500 to-purple-500',
+      vendor: 'from-emerald-500 to-green-500',
+      admin: 'from-red-500 to-pink-500',
+      university: 'from-orange-500 to-yellow-500',
+    };
+    return colors[role as keyof typeof colors] || 'from-gray-500 to-gray-600';
+  };
+
+  const formatRole = (role: string) => {
+    return role.charAt(0).toUpperCase() + role.slice(1);
   };
 
   if (!isAuthenticated) {
@@ -45,7 +59,7 @@ const UserActions = () => {
           </Button>
         </div>
 
-        <AuthModal 
+        <EnhancedAuthModal 
           isOpen={showAuthModal} 
           onClose={() => setShowAuthModal(false)} 
         />
@@ -98,32 +112,53 @@ const UserActions = () => {
           <Button variant="ghost" className="relative h-10 w-10 rounded-full border-2 border-emerald-200 hover:border-emerald-300">
             <Avatar className="h-8 w-8">
               <AvatarImage src={user?.avatar} alt={user?.name} />
-              <AvatarFallback className="bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-semibold">
+              <AvatarFallback className={`bg-gradient-to-r ${getRoleColor(user?.role || '')} text-white font-semibold`}>
                 {user?.name?.charAt(0) || 'U'}
               </AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-64" align="end" forceMount>
+        <DropdownMenuContent className="w-80" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-2 p-2">
+            <div className="flex flex-col space-y-3 p-2">
               <div className="flex items-center space-x-3">
                 <Avatar className="h-12 w-12">
                   <AvatarImage src={user?.avatar} alt={user?.name} />
-                  <AvatarFallback className="bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-semibold text-lg">
+                  <AvatarFallback className={`bg-gradient-to-r ${getRoleColor(user?.role || '')} text-white font-semibold text-lg`}>
                     {user?.name?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex flex-col">
+                <div className="flex flex-col flex-1">
                   <p className="text-sm font-medium leading-none">{user?.name}</p>
                   <p className="text-xs leading-none text-muted-foreground mt-1">
                     {user?.email}
                   </p>
-                  {user?.verified && (
-                    <Badge variant="secondary" className="mt-1 text-xs w-fit">
-                      ✓ Verified
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {formatRole(user?.role || '')}
                     </Badge>
-                  )}
+                    {user?.verified && (
+                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+                        ✓ Verified
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Quick Stats */}
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 bg-muted rounded-lg">
+                  <p className="text-xs font-semibold">{user?.reputation}</p>
+                  <p className="text-xs text-muted-foreground">Rating</p>
+                </div>
+                <div className="p-2 bg-muted rounded-lg">
+                  <p className="text-xs font-semibold">{user?.totalSales}</p>
+                  <p className="text-xs text-muted-foreground">Sales</p>
+                </div>
+                <div className="p-2 bg-muted rounded-lg">
+                  <p className="text-xs font-semibold">{user?.trustScore}%</p>
+                  <p className="text-xs text-muted-foreground">Trust</p>
                 </div>
               </div>
             </div>

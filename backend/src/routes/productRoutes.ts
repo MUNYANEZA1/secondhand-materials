@@ -5,6 +5,8 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  likeProduct, // Import likeProduct
+  // unlikeProduct, // Import if implementing
 } from '../controllers/productController';
 import { protect, admin } from '../middleware/authMiddleware'; // Assuming admin might be needed for some ops
 import upload from '../middleware/uploadMiddleware';
@@ -20,6 +22,11 @@ router.route('/:id')
   .put(protect, upload.array('newImages', 10), updateProduct) // 'newImages' for clarity
   .delete(protect, deleteProduct);
 
-// Add other product specific routes here if needed e.g., liking a product, reviews etc.
+router.route('/:id/like').post(protect, likeProduct);
+
+// Add other product specific routes here if needed e.g., reviews etc.
+// If unlikeProduct is implemented:
+// router.route('/:id/like').delete(protect, unlikeProduct); // And import it
+
 
 export default router;
